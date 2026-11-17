@@ -22,6 +22,7 @@ type CheekStyle = "apple" | "sculpted";
 
 const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
 const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
+const FACE_OVAL_LANDMARKS = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
 
 function isValidHex(color: string) {
   return /^#(?:[0-9a-f]{3}){1,2}$/i.test(color);
@@ -35,6 +36,68 @@ function hexToRgb(color: string) {
     r: Number.parseInt(normalized.slice(0, 2), 16),
     g: Number.parseInt(normalized.slice(2, 4), 16),
     b: Number.parseInt(normalized.slice(4, 6), 16),
+  };
+}
+
+function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const lightness = (max + min) / 2;
+  const difference = max - min;
+  let hue = 0;
+  let saturation = 0;
+
+  if (difference > 0) {
+    saturation = difference / (1 - Math.abs(2 * lightness - 1));
+    switch (max) {
+      case red:
+        hue = ((green - blue) / difference + (green < blue ? 6 : 0)) / 6;
+        break;
+      case green:
+        hue = ((blue - red) / difference + 2) / 6;
+        break;
+      default:
+        hue = ((red - green) / difference + 4) / 6;
+    }
+  }
+  return { hue, saturation, lightness };
+}
+
+function hslToRgb(hue: number, saturation: number, lightness: number) {
+  const hueChannel = (p: number, q: number, t: number) => {
+    let normalized = t;
+    if (normalized < 0) normalized += 1;
+    if (normalized > 1) normalized -= 1;
+    if (normalized < 1 / 6) return p + (q - p) * 6 * normalized;
+    if (normalized < 1 / 2) return q;
+    if (normalized < 2 / 3) return p + (q - p) * (2 / 3 - normalized) * 6;
+    return p;
+  };
+  if (saturation === 0) {
+    const channel = Math.round(lightness * 255);
+    return { r: channel, g: channel, b: channel };
+  }
+  const q = lightness < 0.5
+    ? lightness * (1 + saturation)
+    : lightness + saturation - lightness * saturation;
+  const p = 2 * lightness - q;
+  return {
+    r: Math.round(hueChannel(p, q, hue + 1 / 3) * 255),
+    g: Math.round(hueChannel(p, q, hue) * 255),
+    b: Math.round(hueChannel(p, q, hue - 1 / 3) * 255),
+  };
+}
+
+function boostRougeColor(color: string) {
+  const hsl = rgbToHsl(hexToRgb(color));
+  const lightness = hsl.lightness > 0.75 ? hsl.lightness - 0.1 : hsl.lightness;
+  const saturation = Math.min(1, Math.max(hsl.saturation, 0.85));
+  return {
+    rgb: hslToRgb(hsl.hue, saturation, lightness),
+    lightness,
   };
 }
 
@@ -56,9 +119,11 @@ function drawRouge(
 ) {
   const context = canvas.getContext("2d");
   if (!context || !result.faceLandmarks[0] || !isValidHex(color)) return;
-  const left = averageLandmarks(result, [116, 123, 50]);
-  const right = averageLandmarks(result, [345, 352, 280]);
+  const landmarks = result.faceLandmarks[0];
+  const left = averageLandmarks(result, [118, 101, 50]);
+  const right = averageLandmarks(result, [347, 330, 280]);
   if (!left || !right) return;
+  if (FACE_OVAL_LANDMARKS.some((index) => !landmarks[index])) return;
 
   const scaleX = canvas.width;
   const scaleY = canvas.height;
@@ -67,25 +132,37 @@ function drawRouge(
   const rightX = right.x * scaleX;
   const rightY = right.y * scaleY;
   const cheekDistance = Math.hypot(rightX - leftX, rightY - leftY);
-  const radius = cheekDistance * 0.32;
-  const rgb = hexToRgb(color);
-  const opacity = 0.45 * intensity;
+  const radius = cheekDistance * 0.22;
+  const boostedColor = boostRougeColor(color);
+  canvas.style.mixBlendMode = boostedColor.lightness > 0.6 ? "soft-light" : "multiply";
+  const opacity = 0.32 * intensity;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.globalCompositeOperation = "multiply";
+  context.save();
+  context.beginPath();
+  FACE_OVAL_LANDMARKS.forEach((index, pointIndex) => {
+    const point = landmarks[index];
+    const x = point.x * scaleX;
+    const y = point.y * scaleY;
+    if (pointIndex === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.closePath();
+  context.clip();
   for (const [x, y, direction] of [[leftX, leftY, -1], [rightX, rightY, 1]] as const) {
     const offsetX = style === "sculpted" ? direction * radius * 0.22 : 0;
     const offsetY = style === "sculpted" ? radius * 0.18 : 0;
     const gradient = context.createRadialGradient(x + offsetX, y + offsetY, 0, x + offsetX, y + offsetY, radius);
-    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
-    gradient.addColorStop(0.45, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.45})`);
-    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+    gradient.addColorStop(0, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity})`);
+    gradient.addColorStop(0.25, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity})`);
+    gradient.addColorStop(0.55, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity * 0.45})`);
+    gradient.addColorStop(1, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, 0)`);
     context.fillStyle = gradient;
     context.beginPath();
     context.arc(x + offsetX, y + offsetY, radius, 0, Math.PI * 2);
     context.fill();
   }
-  context.globalCompositeOperation = "source-over";
+  context.restore();
 }
 
 export default function RougeTryOnModal({ variants, selectedVariant, onVariant, onClose }: RougeTryOnModalProps) {
@@ -96,6 +173,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const latestResultRef = useRef<FaceLandmarkerResult | null>(null);
+  const detectorModeRef = useRef<"IMAGE" | "VIDEO">("VIDEO");
   const [intensity, setIntensity] = useState(45);
   const [style, setStyle] = useState<CheekStyle>("apple");
   const [mode, setMode] = useState<"camera" | "photo">("camera");
@@ -133,7 +211,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
         }
-        if (modeRef.current === "camera") {
+        if (modeRef.current === "camera" && detectorModeRef.current === "VIDEO") {
           const result = landmarkerRef.current.detectForVideo(video, performance.now());
           latestResultRef.current = result;
           drawRouge(canvas, result, colorRef.current, intensityRef.current / 100, styleRef.current);
@@ -192,6 +270,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
     if (!file || !canvasRef.current) return;
     const imageUrl = URL.createObjectURL(file);
     setError("");
+    modeRef.current = "photo";
     setMode("photo");
     setStatus("Đang nhận diện khuôn mặt...");
     const image = imageRef.current;
@@ -206,17 +285,46 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
       }
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
-      const result = landmarker.detect(image);
-      latestResultRef.current = result;
-      if (result.faceLandmarks.length === 0) {
+      try {
+        await landmarker.setOptions({ runningMode: "IMAGE" });
+        detectorModeRef.current = "IMAGE";
+        const result = landmarker.detect(image);
+        latestResultRef.current = result;
+        if (result.faceLandmarks.length === 0) {
+          setStatus("");
+          setError("Không tìm thấy khuôn mặt trong ảnh. Vui lòng chọn ảnh chân dung rõ mặt hơn.");
+          return;
+        }
+        drawRouge(canvas, result, selectedVariant.color, intensity / 100, style);
         setStatus("");
-        setError("Không tìm thấy khuôn mặt trong ảnh. Vui lòng chọn ảnh chân dung rõ mặt hơn.");
-        return;
+      } catch (imageError) {
+        console.error("Không thể nhận diện ảnh chân dung cho Rouge AR.", imageError);
+        setStatus("");
+        setError("Không thể xử lý ảnh này. Vui lòng thử ảnh khác hoặc quay lại camera.");
       }
-      drawRouge(canvas, result, selectedVariant.color, intensity / 100, style);
-      setStatus("");
     };
     image.src = imageUrl;
+  };
+
+  const handleCameraMode = async () => {
+    const landmarker = landmarkerRef.current;
+    if (!landmarker) {
+      setError("Bộ nhận diện chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
+      return;
+    }
+    modeRef.current = "photo";
+    setStatus("Đang khởi động lại camera...");
+    try {
+      await landmarker.setOptions({ runningMode: "VIDEO" });
+      detectorModeRef.current = "VIDEO";
+      setMode("camera");
+      setError("");
+      setStatus("");
+    } catch (cameraModeError) {
+      console.error("Không thể chuyển Rouge AR về chế độ camera.", cameraModeError);
+      setError("Không thể khởi động lại camera. Vui lòng đóng và mở lại thử màu AR.");
+      setStatus("");
+    }
   };
 
   return (
@@ -227,18 +335,20 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           <button onClick={onClose} aria-label="Đóng thử màu AR"><X /></button>
         </div>
         <div className="try-on-stage">
-          <video ref={videoRef} className={mode === "camera" ? "try-on-media active" : "try-on-media"} playsInline muted />
-          <img ref={imageRef} className={mode === "photo" ? "try-on-media active" : "try-on-media"} alt="Ảnh chân dung để thử màu" />
-          <canvas ref={canvasRef} className="try-on-canvas" />
+          <div className="try-on-media-frame">
+            <video ref={videoRef} className={mode === "camera" ? "try-on-media active" : "try-on-media"} playsInline muted />
+            <img ref={imageRef} className={mode === "photo" ? "try-on-media active" : "try-on-media"} alt="Ảnh chân dung để thử màu" />
+            <canvas ref={canvasRef} className="try-on-canvas" />
+          </div>
           {status && <p className="try-on-status">{status}</p>}
         </div>
         <div className="try-on-controls">
           {error && <p className="try-on-error">{error}</p>}
           <div className="try-on-swatches"><strong>Chọn màu</strong><div>{variants.filter((variant) => isValidHex(variant.color)).map((variant) => <button key={variant.id} className={variant.id === selectedVariant.id ? "try-on-swatch active" : "try-on-swatch"} style={{ backgroundColor: variant.color }} onClick={() => onVariant(variant)} aria-label={variant.name} />)}</div></div>
-          <label className="intensity-control">Độ đậm <span>{intensity}%</span><input type="range" min="15" max="75" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
+          <label className="intensity-control">Độ đậm <span>{intensity}%</span><input type="range" min="15" max="85" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
           <div className="try-on-style"><strong>Kiểu tán</strong><div><button className={style === "apple" ? "selected" : ""} onClick={() => setStyle("apple")}>Tán tròn tự nhiên</button><button className={style === "sculpted" ? "selected" : ""} onClick={() => setStyle("sculpted")}>Tán xéo nâng gò má</button></div></div>
           <label className="photo-upload"><ImagePlus size={16} /> Tải ảnh chân dung lên<input type="file" accept="image/*" onChange={handlePhoto} /></label>
-          {mode === "photo" && <button className="camera-mode-button" onClick={() => { setMode("camera"); setError(""); }}> <Camera size={16} /> Quay lại camera</button>}
+          {mode === "photo" && <button className="camera-mode-button" onClick={() => void handleCameraMode()}> <Camera size={16} /> Quay lại camera</button>}
         </div>
       </section>
     </div>
