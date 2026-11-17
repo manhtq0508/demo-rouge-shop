@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
+  Camera,
   ChevronDown,
   ChevronRight,
   Minus,
@@ -14,6 +16,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+
+const RougeTryOnModal = dynamic(() => import("./components/RougeTryOnModal"), { ssr: false });
 
 type Variant = {
   id: number;
@@ -216,7 +220,9 @@ function ProductCard({ product, selectedVariant, onVariant, onAdd, onDetail }: {
 
 function ProductDetail({ product, selectedVariant, onVariant, onAdd, onBack }: { product: Product; selectedVariant: Variant; onVariant: (variant: Variant) => void; onAdd: () => void; onBack: () => void }) {
   const discount = product.listPrice > product.salePrice ? Math.round((1 - product.salePrice / product.listPrice) * 100) : 0;
-  return <section className="detail-page"><button className="back-button" onClick={onBack}><ArrowLeft size={17} /> Quay lại cửa hàng</button><div className="detail-layout"><div className="detail-image"><img src={selectedVariant.image || product.image} alt={`${product.name} - ${selectedVariant.name}`} /></div><div className="detail-copy"><p className="eyebrow">ROUGE ESSENTIAL</p><h1>{product.name}</h1><Rating value={product.rating} /><div className="detail-price"><strong>{formatPrice(product.salePrice)}</strong>{product.salePrice < product.listPrice && <><del>{formatPrice(product.listPrice)}</del><em>-{discount}%</em></>}</div><div className="detail-description markdown-content"><ReactMarkdown>{product.adCopy}</ReactMarkdown></div><div className="detail-variants"><strong>Chọn màu: {selectedVariant.name}</strong><div>{product.variants.map((variant) => <button key={variant.id} className={variant.id === selectedVariant.id ? "detail-swatch active" : "detail-swatch"} onClick={() => onVariant(variant)}><img src={variant.image} alt="" /><span style={{ backgroundColor: variant.color }} /></button>)}</div></div><button className="primary-button wide" onClick={onAdd}>Thêm vào giỏ hàng <ShoppingBag size={17} /></button>{product.detail && <details open><summary>Chi tiết sản phẩm <ChevronDown size={16} /></summary><div className="markdown-content"><ReactMarkdown>{product.detail}</ReactMarkdown></div></details>}{product.howToUse && <details><summary>Hướng dẫn sử dụng <ChevronDown size={16} /></summary><div className="markdown-content"><ReactMarkdown>{product.howToUse}</ReactMarkdown></div></details>}</div></div></section>;
+  const [showTryOn, setShowTryOn] = useState(false);
+  const hasValidColor = /^#(?:[0-9a-f]{3}){1,2}$/i.test(selectedVariant.color);
+  return <section className="detail-page"><button className="back-button" onClick={onBack}><ArrowLeft size={17} /> Quay lại cửa hàng</button><div className="detail-layout"><div className="detail-image"><img src={selectedVariant.image || product.image} alt={`${product.name} - ${selectedVariant.name}`} /></div><div className="detail-copy"><p className="eyebrow">ROUGE ESSENTIAL</p><h1>{product.name}</h1><Rating value={product.rating} /><div className="detail-price"><strong>{formatPrice(product.salePrice)}</strong>{product.salePrice < product.listPrice && <><del>{formatPrice(product.listPrice)}</del><em>-{discount}%</em></>}</div><div className="detail-description markdown-content"><ReactMarkdown>{product.adCopy}</ReactMarkdown></div><div className="detail-variants"><strong>Chọn màu: {selectedVariant.name}</strong><div>{product.variants.map((variant) => <button key={variant.id} className={variant.id === selectedVariant.id ? "detail-swatch active" : "detail-swatch"} onClick={() => onVariant(variant)}><img src={variant.image} alt="" /><span style={{ backgroundColor: variant.color }} /></button>)}</div></div>{hasValidColor && <button className="try-on-button wide" onClick={() => setShowTryOn(true)}><Camera size={17} /> Thử màu má hồng (AR)</button>}<button className="primary-button wide" onClick={onAdd}>Thêm vào giỏ hàng <ShoppingBag size={17} /></button>{product.detail && <details open><summary>Chi tiết sản phẩm <ChevronDown size={16} /></summary><div className="markdown-content"><ReactMarkdown>{product.detail}</ReactMarkdown></div></details>}{product.howToUse && <details><summary>Hướng dẫn sử dụng <ChevronDown size={16} /></summary><div className="markdown-content"><ReactMarkdown>{product.howToUse}</ReactMarkdown></div></details>}</div></div>{showTryOn && <RougeTryOnModal variants={product.variants} selectedVariant={selectedVariant} onVariant={onVariant} onClose={() => setShowTryOn(false)} />}</section>;
 }
 
 function CartDrawer({ cart, total, onClose, onQuantity, onRemove, onCheckout }: { cart: CartItem[]; total: number; onClose: () => void; onQuantity: (productId: number, variantId: number, amount: number) => void; onRemove: (productId: number, variantId: number) => void; onCheckout: () => void }) {
