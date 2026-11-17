@@ -110,13 +110,10 @@ export async function POST(request: Request) {
     if (!emailResponse.ok) {
       const details = await emailResponse.text();
       console.error("EmailJS không thể gửi email xác nhận.", emailResponse.status, details);
-      return NextResponse.json(
-        { error: "Đơn hàng đã lưu nhưng chưa gửi được email xác nhận. Vui lòng liên hệ cửa hàng." },
-        { status: 502 },
-      );
+      return NextResponse.json({ orderId, emailSent: false });
     }
 
-    return NextResponse.json({ orderId });
+    return NextResponse.json({ orderId, emailSent: true });
   } catch (error) {
     console.error("Lỗi xử lý checkout.", error);
     return NextResponse.json({ error: "Đã có lỗi xảy ra khi đặt hàng." }, { status: 500 });
