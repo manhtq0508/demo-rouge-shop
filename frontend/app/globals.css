@@ -82,14 +82,12 @@
     }
 
     .try-on-stage {
-        width: fit-content;
-        max-width: 100%;
         max-height: 52dvh;
         margin: 14px auto;
         flex: 0 1 auto;
     }
 
-    .try-on-media {
+    .try-on-media-frame {
         max-height: 52dvh;
     }
 
@@ -1149,20 +1147,32 @@ footer .brand {
 
 .try-on-stage {
     position: relative;
-    width: fit-content;
-    max-width: 100%;
+    width: 100%;
     height: auto;
     margin: 20px 0;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
     background: #f5eeee;
 }
 
-.try-on-media,
+.try-on-media-frame {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    max-height: 55dvh;
+    line-height: 0;
+}
+
 .try-on-canvas {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     transform: scaleX(-1);
 }
 
@@ -1175,6 +1185,7 @@ footer .brand {
     max-height: 55dvh;
     object-fit: contain;
     margin: 0 auto;
+    transform: scaleX(-1);
 }
 
 .try-on-media.active {

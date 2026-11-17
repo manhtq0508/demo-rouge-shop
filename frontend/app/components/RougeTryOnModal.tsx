@@ -335,9 +335,11 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           <button onClick={onClose} aria-label="Đóng thử màu AR"><X /></button>
         </div>
         <div className="try-on-stage">
-          <video ref={videoRef} className={mode === "camera" ? "try-on-media active" : "try-on-media"} playsInline muted />
-          <img ref={imageRef} className={mode === "photo" ? "try-on-media active" : "try-on-media"} alt="Ảnh chân dung để thử màu" />
-          <canvas ref={canvasRef} className="try-on-canvas" />
+          <div className="try-on-media-frame">
+            <video ref={videoRef} className={mode === "camera" ? "try-on-media active" : "try-on-media"} playsInline muted />
+            <img ref={imageRef} className={mode === "photo" ? "try-on-media active" : "try-on-media"} alt="Ảnh chân dung để thử màu" />
+            <canvas ref={canvasRef} className="try-on-canvas" />
+          </div>
           {status && <p className="try-on-status">{status}</p>}
         </div>
         <div className="try-on-controls">
