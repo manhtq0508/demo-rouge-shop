@@ -173,6 +173,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const latestResultRef = useRef<FaceLandmarkerResult | null>(null);
+  const detectorModeRef = useRef<"IMAGE" | "VIDEO">("VIDEO");
   const [intensity, setIntensity] = useState(45);
   const [style, setStyle] = useState<CheekStyle>("apple");
   const [mode, setMode] = useState<"camera" | "photo">("camera");
@@ -210,7 +211,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
         }
-        if (modeRef.current === "camera") {
+        if (modeRef.current === "camera" && detectorModeRef.current === "VIDEO") {
           const result = landmarkerRef.current.detectForVideo(video, performance.now());
           latestResultRef.current = result;
           drawRouge(canvas, result, colorRef.current, intensityRef.current / 100, styleRef.current);
@@ -269,6 +270,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
     if (!file || !canvasRef.current) return;
     const imageUrl = URL.createObjectURL(file);
     setError("");
+    modeRef.current = "photo";
     setMode("photo");
     setStatus("Đang nhận diện khuôn mặt...");
     const image = imageRef.current;
@@ -283,17 +285,46 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
       }
       canvas.width = image.naturalWidth;
       canvas.height = image.naturalHeight;
-      const result = landmarker.detect(image);
-      latestResultRef.current = result;
-      if (result.faceLandmarks.length === 0) {
+      try {
+        await landmarker.setOptions({ runningMode: "IMAGE" });
+        detectorModeRef.current = "IMAGE";
+        const result = landmarker.detect(image);
+        latestResultRef.current = result;
+        if (result.faceLandmarks.length === 0) {
+          setStatus("");
+          setError("Không tìm thấy khuôn mặt trong ảnh. Vui lòng chọn ảnh chân dung rõ mặt hơn.");
+          return;
+        }
+        drawRouge(canvas, result, selectedVariant.color, intensity / 100, style);
         setStatus("");
-        setError("Không tìm thấy khuôn mặt trong ảnh. Vui lòng chọn ảnh chân dung rõ mặt hơn.");
-        return;
+      } catch (imageError) {
+        console.error("Không thể nhận diện ảnh chân dung cho Rouge AR.", imageError);
+        setStatus("");
+        setError("Không thể xử lý ảnh này. Vui lòng thử ảnh khác hoặc quay lại camera.");
       }
-      drawRouge(canvas, result, selectedVariant.color, intensity / 100, style);
-      setStatus("");
     };
     image.src = imageUrl;
+  };
+
+  const handleCameraMode = async () => {
+    const landmarker = landmarkerRef.current;
+    if (!landmarker) {
+      setError("Bộ nhận diện chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
+      return;
+    }
+    modeRef.current = "photo";
+    setStatus("Đang khởi động lại camera...");
+    try {
+      await landmarker.setOptions({ runningMode: "VIDEO" });
+      detectorModeRef.current = "VIDEO";
+      setMode("camera");
+      setError("");
+      setStatus("");
+    } catch (cameraModeError) {
+      console.error("Không thể chuyển Rouge AR về chế độ camera.", cameraModeError);
+      setError("Không thể khởi động lại camera. Vui lòng đóng và mở lại thử màu AR.");
+      setStatus("");
+    }
   };
 
   return (
@@ -315,7 +346,7 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           <label className="intensity-control">Độ đậm <span>{intensity}%</span><input type="range" min="15" max="85" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
           <div className="try-on-style"><strong>Kiểu tán</strong><div><button className={style === "apple" ? "selected" : ""} onClick={() => setStyle("apple")}>Tán tròn tự nhiên</button><button className={style === "sculpted" ? "selected" : ""} onClick={() => setStyle("sculpted")}>Tán xéo nâng gò má</button></div></div>
           <label className="photo-upload"><ImagePlus size={16} /> Tải ảnh chân dung lên<input type="file" accept="image/*" onChange={handlePhoto} /></label>
-          {mode === "photo" && <button className="camera-mode-button" onClick={() => { setMode("camera"); setError(""); }}> <Camera size={16} /> Quay lại camera</button>}
+          {mode === "photo" && <button className="camera-mode-button" onClick={() => void handleCameraMode()}> <Camera size={16} /> Quay lại camera</button>}
         </div>
       </section>
     </div>
