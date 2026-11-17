@@ -93,12 +93,8 @@ function hslToRgb(hue: number, saturation: number, lightness: number) {
 
 function boostRougeColor(color: string) {
   const hsl = rgbToHsl(hexToRgb(color));
-  const lightness = hsl.lightness > 0.75 ? hsl.lightness - 0.1 : hsl.lightness;
-  const saturation = Math.min(1, Math.max(hsl.saturation, 0.85));
-  return {
-    rgb: hslToRgb(hsl.hue, saturation, lightness),
-    lightness,
-  };
+  const saturation = Math.min(0.85, Math.max(hsl.saturation, 0.75));
+  return hslToRgb(hsl.hue, saturation, hsl.lightness);
 }
 
 function averageLandmarks(result: FaceLandmarkerResult, indexes: number[]) {
@@ -116,6 +112,7 @@ function drawRouge(
   color: string,
   intensity: number,
   style: CheekStyle,
+  opacityMultiplier = 1,
 ) {
   const context = canvas.getContext("2d");
   if (!context || !result.faceLandmarks[0] || !isValidHex(color)) return;
@@ -134,8 +131,7 @@ function drawRouge(
   const cheekDistance = Math.hypot(rightX - leftX, rightY - leftY);
   const radius = cheekDistance * 0.22;
   const boostedColor = boostRougeColor(color);
-  canvas.style.mixBlendMode = boostedColor.lightness > 0.6 ? "soft-light" : "multiply";
-  const opacity = 0.32 * intensity;
+  const opacity = 0.32 * intensity * opacityMultiplier;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
@@ -153,10 +149,10 @@ function drawRouge(
     const offsetX = style === "sculpted" ? direction * radius * 0.22 : 0;
     const offsetY = style === "sculpted" ? radius * 0.18 : 0;
     const gradient = context.createRadialGradient(x + offsetX, y + offsetY, 0, x + offsetX, y + offsetY, radius);
-    gradient.addColorStop(0, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity})`);
-    gradient.addColorStop(0.25, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity})`);
-    gradient.addColorStop(0.55, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, ${opacity * 0.45})`);
-    gradient.addColorStop(1, `rgba(${boostedColor.rgb.r}, ${boostedColor.rgb.g}, ${boostedColor.rgb.b}, 0)`);
+    gradient.addColorStop(0, `rgba(${boostedColor.r}, ${boostedColor.g}, ${boostedColor.b}, ${opacity})`);
+    gradient.addColorStop(0.25, `rgba(${boostedColor.r}, ${boostedColor.g}, ${boostedColor.b}, ${opacity})`);
+    gradient.addColorStop(0.55, `rgba(${boostedColor.r}, ${boostedColor.g}, ${boostedColor.b}, ${opacity * 0.45})`);
+    gradient.addColorStop(1, `rgba(${boostedColor.r}, ${boostedColor.g}, ${boostedColor.b}, 0)`);
     context.fillStyle = gradient;
     context.beginPath();
     context.arc(x + offsetX, y + offsetY, radius, 0, Math.PI * 2);
@@ -167,7 +163,8 @@ function drawRouge(
 
 export default function RougeTryOnModal({ variants, selectedVariant, onVariant, onClose }: RougeTryOnModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const colorCanvasRef = useRef<HTMLCanvasElement>(null);
+  const multiplyCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -203,18 +200,21 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
     };
 
     const renderFrame = () => {
-      if (!active || !videoRef.current || !canvasRef.current || !landmarkerRef.current) return;
+      if (!active || !videoRef.current || !colorCanvasRef.current || !multiplyCanvasRef.current || !landmarkerRef.current) return;
       const video = videoRef.current;
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0) {
-        const canvas = canvasRef.current;
-        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+        const canvases = [colorCanvasRef.current, multiplyCanvasRef.current];
+        for (const canvas of canvases) {
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
         }
         if (modeRef.current === "camera" && detectorModeRef.current === "VIDEO") {
           const result = landmarkerRef.current.detectForVideo(video, performance.now());
           latestResultRef.current = result;
-          drawRouge(canvas, result, colorRef.current, intensityRef.current / 100, styleRef.current);
+          drawRouge(colorCanvasRef.current, result, colorRef.current, intensityRef.current / 100, styleRef.current);
+          drawRouge(multiplyCanvasRef.current, result, colorRef.current, intensityRef.current / 100, styleRef.current, 0.5);
           setStatus(result.faceLandmarks.length > 0 ? "" : "Đưa khuôn mặt vào giữa khung hình nhé.");
         }
       }
@@ -260,14 +260,15 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
   }, []);
 
   useEffect(() => {
-    if (mode === "photo" && latestResultRef.current && canvasRef.current) {
-      drawRouge(canvasRef.current, latestResultRef.current, selectedVariant.color, intensity / 100, style);
+    if (mode === "photo" && latestResultRef.current && colorCanvasRef.current && multiplyCanvasRef.current) {
+      drawRouge(colorCanvasRef.current, latestResultRef.current, selectedVariant.color, intensity / 100, style);
+      drawRouge(multiplyCanvasRef.current, latestResultRef.current, selectedVariant.color, intensity / 100, style, 0.5);
     }
   }, [intensity, mode, selectedVariant.color, style]);
 
   const handlePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !canvasRef.current) return;
+    if (!file || !colorCanvasRef.current || !multiplyCanvasRef.current) return;
     const imageUrl = URL.createObjectURL(file);
     setError("");
     modeRef.current = "photo";
@@ -277,14 +278,18 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
     if (!image) return;
     image.onload = async () => {
       URL.revokeObjectURL(imageUrl);
-      const canvas = canvasRef.current;
+      const colorCanvas = colorCanvasRef.current;
+      const multiplyCanvas = multiplyCanvasRef.current;
       const landmarker = landmarkerRef.current;
-      if (!canvas || !landmarker) {
+      if (!colorCanvas || !multiplyCanvas || !landmarker) {
         setError("Bộ nhận diện chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
         return;
       }
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
+      const canvases = [colorCanvas, multiplyCanvas];
+      for (const canvas of canvases) {
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+      }
       try {
         await landmarker.setOptions({ runningMode: "IMAGE" });
         detectorModeRef.current = "IMAGE";
@@ -295,7 +300,8 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           setError("Không tìm thấy khuôn mặt trong ảnh. Vui lòng chọn ảnh chân dung rõ mặt hơn.");
           return;
         }
-        drawRouge(canvas, result, selectedVariant.color, intensity / 100, style);
+        drawRouge(canvases[0], result, selectedVariant.color, intensity / 100, style);
+        drawRouge(canvases[1], result, selectedVariant.color, intensity / 100, style, 0.5);
         setStatus("");
       } catch (imageError) {
         console.error("Không thể nhận diện ảnh chân dung cho Rouge AR.", imageError);
@@ -338,7 +344,8 @@ export default function RougeTryOnModal({ variants, selectedVariant, onVariant, 
           <div className="try-on-media-frame">
             <video ref={videoRef} className={mode === "camera" ? "try-on-media active" : "try-on-media"} playsInline muted />
             <img ref={imageRef} className={mode === "photo" ? "try-on-media active" : "try-on-media"} alt="Ảnh chân dung để thử màu" />
-            <canvas ref={canvasRef} className="try-on-canvas" />
+            <canvas ref={colorCanvasRef} className="try-on-canvas mix-blend-color" />
+            <canvas ref={multiplyCanvasRef} className="try-on-canvas mix-blend-multiply" />
           </div>
           {status && <p className="try-on-status">{status}</p>}
         </div>

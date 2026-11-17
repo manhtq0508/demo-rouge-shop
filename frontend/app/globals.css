@@ -1194,6 +1194,13 @@ footer .brand {
 
 .try-on-canvas {
     pointer-events: none;
+}
+
+.try-on-canvas.mix-blend-color {
+    mix-blend-mode: color;
+}
+
+.try-on-canvas.mix-blend-multiply {
     mix-blend-mode: multiply;
 }
 
