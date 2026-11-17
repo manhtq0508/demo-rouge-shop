@@ -9,6 +9,142 @@
     --background: #fffdfc;
 }
 
+@media (max-width: 640px) {
+    .site-header {
+        height: 64px;
+        padding: 0 14px;
+    }
+
+    .brand {
+        gap: 6px;
+        font-size: 13px;
+        letter-spacing: 2px;
+    }
+
+    .brand-mark {
+        width: 27px;
+        height: 27px;
+        font-size: 17px;
+    }
+
+    .header-actions {
+        gap: 8px;
+    }
+
+    .search-box {
+        width: min(34vw, 130px);
+    }
+
+    .hero {
+        min-height: 360px;
+    }
+
+    .hero h1 {
+        font-size: clamp(24px, 8vw, 40px);
+    }
+
+    .products-section {
+        padding: 48px 18px 70px;
+    }
+
+    .section-heading h2 {
+        font-size: 30px;
+    }
+
+    .detail-page {
+        padding: 28px 18px 70px;
+    }
+
+    .detail-copy h1 {
+        font-size: clamp(32px, 10vw, 40px);
+    }
+
+    .detail-layout {
+        gap: 22px;
+    }
+
+    .try-on-overlay {
+        align-items: stretch;
+        padding: 0;
+    }
+
+    .try-on-modal {
+        width: 100%;
+        height: 100dvh;
+        max-height: none;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .try-on-heading h2 {
+        font-size: 25px;
+    }
+
+    .try-on-stage {
+        width: fit-content;
+        max-width: 100%;
+        max-height: 52dvh;
+        margin: 14px auto;
+        flex: 0 1 auto;
+    }
+
+    .try-on-media {
+        max-height: 52dvh;
+    }
+
+    .try-on-controls {
+        min-height: 0;
+        overflow-y: auto;
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    .try-on-swatches {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .try-on-swatches > div {
+        width: 100%;
+        overflow-x: auto;
+        padding: 5px 4px 8px;
+        gap: 14px;
+    }
+
+    .try-on-swatch {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .intensity-control {
+        grid-template-columns: auto 48px minmax(0, 1fr);
+        min-height: 44px;
+    }
+
+    .try-on-style {
+        align-items: stretch;
+    }
+
+    .try-on-style > div {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .try-on-style button,
+    .camera-mode-button,
+    .photo-upload {
+        min-height: 44px;
+    }
+
+    .photo-upload,
+    .camera-mode-button {
+        justify-content: center;
+        margin: 0 0 8px;
+    }
+}
+
 * {
     box-sizing: border-box;
 }
@@ -896,7 +1032,7 @@ footer .brand {
     align-items: center;
     background: #f8f3f1;
     padding: 15px;
-    margin: 20px 0;
+    margin: 20px auto;
 }
 
 .cod-box>span {
@@ -1013,8 +1149,9 @@ footer .brand {
 
 .try-on-stage {
     position: relative;
-    width: 100%;
-    aspect-ratio: 4 / 3;
+    width: fit-content;
+    max-width: 100%;
+    height: auto;
     margin: 20px 0;
     overflow: hidden;
     background: #f5eeee;
@@ -1026,12 +1163,18 @@ footer .brand {
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
     transform: scaleX(-1);
 }
 
 .try-on-media {
     display: none;
+    position: relative;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 55dvh;
+    object-fit: contain;
+    margin: 0 auto;
 }
 
 .try-on-media.active {
@@ -1221,7 +1364,7 @@ footer .brand {
     }
 
     .hero {
-        min-height: 470px;
+        min-height: 360px;
         align-items: start;
     }
 
