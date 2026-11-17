@@ -1432,3 +1432,81 @@ footer .brand {
 .price-row em {
     font-size: 12px;
 }
+
+@media (max-width: 767px) {
+    .hero {
+        min-height: 0;
+        height: auto;
+        padding: 0;
+    }
+
+    .hero-slides {
+        position: relative;
+        inset: auto;
+        width: 100%;
+    }
+
+    .hero-banner-image {
+        position: relative;
+        inset: auto;
+        display: none;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        object-fit: contain;
+        transform: none;
+    }
+
+    .hero-banner-image.active {
+        display: block;
+        opacity: 1;
+        transform: none;
+    }
+
+    .try-on-modal {
+        width: 100%;
+        max-height: 90dvh;
+        height: auto;
+        overflow-y: auto;
+    }
+
+    .try-on-stage {
+        max-height: 50dvh;
+        min-height: 0;
+    }
+
+    .try-on-media-frame {
+        width: 100%;
+        max-height: 50dvh;
+        margin: 0 auto;
+    }
+
+    .try-on-media {
+        width: 100%;
+        height: auto;
+        max-height: 50dvh;
+        display: none;
+        object-fit: contain;
+    }
+
+    .try-on-media.active {
+        display: block;
+    }
+
+    .try-on-controls {
+        overflow: visible;
+    }
+
+    .try-on-swatches > div {
+        align-items: center;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .try-on-swatch {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        aspect-ratio: 1;
+    }
+}
