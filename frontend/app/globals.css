@@ -1040,6 +1040,7 @@ footer .brand {
 
 .try-on-canvas {
     pointer-events: none;
+    mix-blend-mode: multiply;
 }
 
 .try-on-status {
