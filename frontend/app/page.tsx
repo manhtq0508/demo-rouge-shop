@@ -172,7 +172,8 @@ export default function Home() {
     <main>
       <header className="site-header">
         <button className="brand" onClick={() => changeView(null)} aria-label="Về trang chủ">
-          <span className="brand-mark">R</span><span>ROUGE</span>
+          <img className="brand-logo" src="/logo.png" alt="" />
+          <img className="brand-name" src="/brand_name.png" alt="ROUGE" />
         </button>
         <nav>
           <button onClick={() => { setCategory("Tất cả"); changeView(null); }}>Trang chủ</button>

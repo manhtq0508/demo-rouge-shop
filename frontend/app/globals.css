@@ -17,14 +17,16 @@
 
     .brand {
         gap: 6px;
-        font-size: 13px;
-        letter-spacing: 2px;
     }
 
-    .brand-mark {
-        width: 27px;
-        height: 27px;
-        font-size: 17px;
+    .brand-logo {
+        width: 50px;
+        height: 50px;
+    }
+
+    .brand-name {
+        width: 92px;
+        height: 46px;
     }
 
     .header-actions {
@@ -103,7 +105,7 @@
         gap: 9px;
     }
 
-    .try-on-swatches > div {
+    .try-on-swatches>div {
         width: 100%;
         overflow-x: auto;
         padding: 5px 4px 8px;
@@ -125,7 +127,7 @@
         align-items: stretch;
     }
 
-    .try-on-style > div {
+    .try-on-style>div {
         display: grid;
         grid-template-columns: 1fr 1fr;
     }
@@ -183,24 +185,20 @@ button {
 .brand {
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 3px;
+    gap: 0px;
 }
 
-.brand-mark {
-    width: 30px;
-    height: 30px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    background: var(--rose);
+.brand-logo {
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
-    font-family: Georgia, serif;
-    font-size: 19px;
-    font-weight: 400;
-    letter-spacing: 0;
+    object-fit: cover;
+}
+
+.brand-name {
+    width: 112px;
+    height: 56px;
+    object-fit: contain;
 }
 
 .site-header nav {
@@ -1504,7 +1502,7 @@ footer .brand {
         overflow: visible;
     }
 
-    .try-on-swatches > div {
+    .try-on-swatches>div {
         align-items: center;
         overflow-x: auto;
         flex-wrap: nowrap;
