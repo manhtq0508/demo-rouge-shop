@@ -191,7 +191,7 @@ export default function Home() {
       ) : (
         <>
           {catalogBanners.length > 0 && <section className={`hero ${catalogBanners[activeBanner].tone}`}>
-            <div className="hero-slides">{catalogBanners.map((banner, index) => banner.image && <img key={banner.id} className={index === activeBanner ? "hero-banner-image active" : "hero-banner-image"} src={banner.image} alt={banner.alt} />)}</div>
+            <div className="hero-slides">{catalogBanners.map((banner, index) => banner.image && <div key={banner.id} className={index === activeBanner ? "hero-slide active" : "hero-slide"}><img className="hero-banner-image" src={banner.image} alt={banner.alt} /></div>)}</div>
             <div className="hero-radios" role="radiogroup" aria-label="Chọn banner">
               {catalogBanners.map((banner, index) => <label key={banner.id} className={index === activeBanner ? "hero-radio active" : "hero-radio"}><input type="radio" name="banner" checked={index === activeBanner} onChange={() => setActiveBanner(index)} aria-label={`Banner ${index + 1}`} /><span /></label>)}
             </div>
@@ -205,7 +205,7 @@ export default function Home() {
         </>
       )}
 
-      <footer><span className="brand"><span className="brand-mark">R</span><span>ROUGE</span></span><span className="footer-text">Beauty is a feeling, not a look.</span><span className="footer-text">© 2026 Rouge Beauty Studio</span></footer>
+      <footer><span className="brand"><span className="brand-mark">R</span><span>ROUGE</span></span><span className="footer-text">Beauty lives forever.</span><span className="footer-text">© 2026 Rouge Beauty Studio</span></footer>
 
       {showCart && <CartDrawer cart={cart} total={total} onClose={() => setShowCart(false)} onQuantity={updateQuantity} onRemove={(productId, variantId) => setCart((current) => current.filter((item) => item.product.id !== productId || item.variant.id !== variantId))} onCheckout={() => { setShowCart(false); setShowCheckout(true); }} />}
       {showCheckout && <CheckoutModal cart={cart} total={total} onClose={() => setShowCheckout(false)} onSuccess={(emailSent) => { setCart([]); setShowCheckout(false); setNotice(emailSent ? "Đặt hàng thành công! Email xác nhận đã được gửi." : "Đặt hàng thành công! Email xác nhận chưa gửi được."); window.setTimeout(() => setNotice(""), 3500); }} />}
@@ -216,7 +216,11 @@ export default function Home() {
 
 function ProductCard({ product, selectedVariant, onVariant, onAdd, onDetail }: { product: Product; selectedVariant: Variant; onVariant: (variant: Variant) => void; onAdd: () => void; onDetail: () => void }) {
   const discount = Math.round((1 - product.salePrice / product.listPrice) * 100);
-  return <article className="product-card"><button className="product-image" onClick={onDetail}><img src={selectedVariant.image || product.image} alt={product.name} /><span className="quick-add" onClick={(event) => { event.stopPropagation(); onAdd(); }}>Thêm vào giỏ</span>{product.badge && <span className="badge">{product.badge}</span>}</button><div className="product-info"><button className="product-name" onClick={onDetail}>{product.name}</button><Rating value={product.rating} /><div className="price-row"><strong>{formatPrice(product.salePrice)}</strong>{product.salePrice < product.listPrice && <><del>{formatPrice(product.listPrice)}</del><em>-{discount}%</em></>}</div><div className="variant-row"><span>Màu: {selectedVariant.name}</span><div>{product.variants.map((variant) => <button key={variant.id} className={variant.id === selectedVariant.id ? "color-dot active" : "color-dot"} style={{ backgroundColor: variant.color }} onClick={() => onVariant(variant)} aria-label={variant.name} />)}</div></div></div></article>;
+  const imageSource = selectedVariant.image || product.image;
+  const [imgErrorSource, setImgErrorSource] = useState<string | null>(null);
+  const imgError = !imageSource || imgErrorSource === imageSource;
+
+  return <article className="product-card"><button className="product-image" onClick={onDetail}>{imgError ? <span className="product-image-placeholder"><ShoppingBag size={30} strokeWidth={1.4} /><span>{product.name}</span></span> : <img src={imageSource} alt="" onError={() => setImgErrorSource(imageSource)} />}<span className="quick-add" onClick={(event) => { event.stopPropagation(); onAdd(); }}>Thêm vào giỏ</span>{product.badge && <span className="badge">{product.badge}</span>}</button><div className="product-info"><button className="product-name" onClick={onDetail}>{product.name}</button><div className="product-meta"><Rating value={product.rating} /><div className="price-row"><strong>{formatPrice(product.salePrice)}</strong>{product.salePrice < product.listPrice && <><del>{formatPrice(product.listPrice)}</del><em>-{discount}%</em></>}</div><div className="variant-row"><span>Màu: {selectedVariant.name}</span><div>{product.variants.map((variant) => <button key={variant.id} className={variant.id === selectedVariant.id ? "color-dot active" : "color-dot"} style={{ backgroundColor: variant.color }} onClick={() => onVariant(variant)} aria-label={variant.name} />)}</div></div></div></div></article>;
 }
 
 function ProductDetail({ product, selectedVariant, onVariant, onAdd, onBack }: { product: Product; selectedVariant: Variant; onVariant: (variant: Variant) => void; onAdd: () => void; onBack: () => void }) {
