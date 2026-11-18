@@ -863,6 +863,10 @@ footer {
     color: #c8babb;
     min-height: 100px;
     padding: 30px 7vw;
+    text-align: center;
+}
+
+.footer-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -871,6 +875,44 @@ footer {
 
 .footer-text {
     font-size: 14px;
+}
+
+.footer-disclaimer {
+    max-width: 768px;
+    margin: 20px auto 0;
+    padding: 20px 0 0;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    color: #999094;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.footer-disclaimer strong {
+    display: block;
+    margin-bottom: 8px;
+    color: #e5e1e2;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.footer-disclaimer p {
+    margin: 0;
+}
+
+.footer-disclaimer p + p {
+    margin-top: 8px;
+    color: #d7d1d3;
+}
+
+.footer-disclaimer a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+.footer-disclaimer a:hover {
+    color: #fff;
 }
 
 footer .brand {
@@ -1409,10 +1451,15 @@ footer .brand {
         font-size: 38px;
     }
 
-    footer {
+    .footer-main {
         flex-direction: column;
-        gap: 15px;
+        gap: 12px;
         text-align: center;
+    }
+
+    .footer-disclaimer {
+        padding-right: 16px;
+        padding-left: 16px;
     }
 }
 
